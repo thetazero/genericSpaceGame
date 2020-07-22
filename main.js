@@ -13,6 +13,16 @@ let State = {
                 Earth: {
                     moons: {
                         Luna: {
+                            children: {
+                                'X-7': {
+                                    tiles: [],
+                                    size: 1,
+                                    modifiers: [],
+                                    type: 'station',
+                                    orbitalRadius: 0.7,
+                                    year: 1 / 20,
+                                }
+                            },
                             tiles: [],
                             size: 4,
                             modifiers: [],
@@ -95,7 +105,7 @@ function formatNum(num) {
 setupStats()
 
 function updateLoc() {
-    let debthMap = [null, 'System', 'Planet', 'Satellite']
+    let debthMap = [null, 'System', 'Planet', 'Satellite', 'Satellite2']
     debth = debthMap[State.location.length]
     setScene()
     Inspector.setUp()

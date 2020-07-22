@@ -33,16 +33,20 @@ let planets = []
 let satellites = []
 let debth = 'System'
 let zoom = 1
+let fpsCounter;
 function setScene() {
     let loc = State.location
     setRenderer()
-    if (debth == 'System' || debth == 'Planet' || debth == 'Satellite') {
-        let scales = {
-            System: 1,
-            Planet: 2,
-            Satellite: 3
-        }
-        zoom = scales[debth]
+    if (debth == 'System' || debth == 'Planet' || debth == 'Satellite' || debth == 'Satellite2') {
+        fpsCounter = new PIXI.Text('0', {
+            fontFamily: '-apple-system, "Segoe UI", Roboto, Oxygen, Ubuntu, Cantarell, "Open Sans", "Helvetica Neue", sans-serif', fontSize: 18 / zoom, fill: 0xeeeeee, align: 'center'
+        });
+        fpsCounter.position.set(-mx * zoom, -my * zoom)
+        app.stage.addChild(fpsCounter)
+        fpsCounter.parentGroup = layers.hoverUI
+
+
+        zoom = Config.scales[debth]
         app.stage.scale.set(zoom)
 
         let system = State.systems[loc[0]]
@@ -59,40 +63,54 @@ function setScene() {
         for (let [planet, { type, size, orbitalRadius, year, moons }] of Object.entries(system.planets)) {
             let newloc = State.location.slice(0, 2)
             newloc[1] = planet
-            let t = makePlanet(type, size, planet, newloc)
-            app.stage.addChild(makeOrbit(0, 0, orbitalRadius * mx))
-            app.stage.addChild(t)
+            let planetElem = makePlanet(type, size, planet, newloc)
+            app.stage.addChild(makeOrbit(0, 0, orbitalRadius * mx, 1.5))
+            app.stage.addChild(planetElem)
             planets.push({
-                elem: t,
-                orbitalRadius,
+                elem: planetElem,
+                orbitalRadius: orbitalRadius * mx,
                 year,
                 size,
                 name: planet
             })
             if (moons) {
                 let parentSize = size
-                let parentOrbitalRadius = orbitalRadius
-                let parentYear = year
-                for (let [moon, { type, size, orbitalRadius, year }] of Object.entries(moons)) {
+                for (let [moon, { type, size, orbitalRadius, year, children }] of Object.entries(moons)) {
                     newloc = newloc.slice(0, 2)
                     newloc.push(moon)
                     let m = makePlanet(type, size, moon, newloc)
-                    t.addChild(makeOrbit(0, 0, orbitalRadius * parentSize * Config.moonOrbitMul))
-                    app.stage.addChild(m)
-                    satellites.push({
+                    planetElem.addChild(makeOrbit(0, 0, orbitalRadius * parentSize * Config.moonOrbitMul, 0.75))
+                    planetElem.addChild(m)
+                    planets.push({
                         elem: m,
-                        orbitalRadius,
+                        orbitalRadius: orbitalRadius * parentSize * Config.moonOrbitMul,
                         year,
                         size,
-                        parentSize,
-                        parentOrbitalRadius,
-                        parentYear,
                         name: moon
                     })
+
+                    if (children) {
+                        let = moonSize = size
+                        for (let [name, { type, size, orbitalRadius, year }] of Object.entries(children)) {
+                            newloc = newloc.slice(0, 3)
+                            newloc.push(name)
+                            let elem = makePlanet(type, size, name, newloc)
+                            m.addChild(makeOrbit(0, 0, orbitalRadius * moonSize * Config.moonOrbitMul, 0.375))
+                            m.addChild(elem)
+                            console.log(name)
+                            planets.push({
+                                elem,
+                                orbitalRadius: orbitalRadius * moonSize * Config.moonOrbitMul,
+                                year,
+                                size,
+                                name,
+                            })
+                        }
+                    }
                 }
             }
             if (debth == 'Planet' && planet == loc[1]) {
-                makeFocus(t, size)
+                makeFocus(planetElem, size)
             }
         }
     }
@@ -105,8 +123,10 @@ function makePlanet(type, size, name, loc) {
     planet.drawCircle(0, 0, size)
     planet.endFill()
 
+    console.log(type, size, name, loc)
     hoverSelect(planet, size, name)
-    planet.mouseup = function () {
+    planet.mouseup = function (e) {
+        e.stopPropagation()
         State.location = loc
         updateLoc()
     }
@@ -128,40 +148,44 @@ function hoverSelect(obj, radius, str) {
 
     let selector = new PIXI.Graphics()
     selector.parentGroup = layers.hoverUI
-    selector.lineStyle(1.5, 0xcccccc, 0);
+    selector.lineStyle(1.5 / zoom, 0xcccccc, 0);
     selector.drawCircle(0, 0, radius);
     selector.endFill()
     obj.addChild(selector)
 
-    let text = new PIXI.Text(str, { fontFamily: '-apple-system, "Segoe UI", Roboto, Oxygen, Ubuntu, Cantarell, "Open Sans", "Helvetica Neue", sans-serif', fontSize: 18, fill: 0xeeeeee, align: 'center' });
+    let fontSize = 18 / zoom
+    let text = new PIXI.Text(str, { fontFamily: '-apple-system, "Segoe UI", Roboto, Oxygen, Ubuntu, Cantarell, "Open Sans", "Helvetica Neue", sans-serif', fontSize, fill: 0xeeeeee, align: 'center' });
+    text.resolution = zoom * 4
     text.parentGroup = layers.hoverUI
-    text.x = +radius
-    text.y = -2 * radius
+    text.x += radius / (2 ** .5) + 3 / zoom
+    text.y -= fontSize + radius / (2 ** .5) + 3 / zoom
     text.visible = false
     obj.addChild(text)
 
-    obj.mouseover = function (mouseData) {
+    obj.mouseover = function (e) {
+        e.stopPropagation()
         selector.clear()
-        selector.lineStyle(1.5, 0xcccccc, 1);
+        selector.lineStyle(1.5 / zoom, 0xcccccc, 1);
         selector.drawCircle(0, 0, radius);
         selector.endFill()
         text.visible = true
         obj.cursor = "pointer"
     }
 
-    obj.mouseout = function (mouseData) {
+    obj.mouseout = function (e) {
+        // e.stopPropagation()
         selector.clear()
-        selector.lineStyle(1.5, 0xcccccc, 0);
+        selector.lineStyle(1.5 / zoom, 0xcccccc, 0);
         selector.drawCircle(0, 0, radius);
         selector.endFill()
         text.visible = false
     }
 }
 
-function makeOrbit(x, y, radius) {
+function makeOrbit(x, y, radius, stroke) {
     let orbit = new PIXI.Graphics();
     orbit.parentGroup = PIXI.mapObj
-    orbit.lineStyle(1.5, 0xcccccc, 1);
+    orbit.lineStyle(stroke, 0xcccccc, 1);
     orbit.drawCircle(x, y, radius);
     orbit.endFill();
     return orbit
@@ -175,7 +199,8 @@ function makeStar(type, size, color, name) {
     star.drawCircle(0, 0, size)
     star.endFill()
 
-    star.mouseup = function () {
+    star.mouseup = function (e) {
+        e.stopPropagation()
         if (State.location.length == 1) {
             return
         } else {
@@ -187,7 +212,8 @@ function makeStar(type, size, color, name) {
     return star
 }
 
-function drawLoop() {
+function drawLoop(delta) {
+    fpsCounter.text = Math.floor(delta * 60) + "fps"
     if (debth == 'System' || debth == 'Planet' || debth == 'Satellite') {
         if (debth == 'System') {
             app.stage.position.set(mx, my)
@@ -198,34 +224,25 @@ function drawLoop() {
             planets[i].elem.y = y
             if (debth == 'Planet' && planets[i].name == State.location[1]) {
                 app.stage.position.set(mx - x * app.stage.scale.x, my - y * app.stage.scale.y)
-                // console.log(mx, mx - x + planets[i].elem.x)
-                // console.log(my, my - y + planets[i].elem.y)
-            }
-        }
-        for (let i = 0; i < satellites.length; i++) {
-            let { year, orbitalRadius, parentYear, parentOrbitalRadius, parentSize } = satellites[i]
-            let [x, y] = calcSatilitePos(year, orbitalRadius, parentYear, parentOrbitalRadius, parentSize)
-
-            satellites[i].elem.x = x
-            satellites[i].elem.y = y
-            if (debth == 'Satellite' && satellites[i].name == State.location[2]) {
-                app.stage.position.set(-x * app.stage.scale.x + mx, -y * app.stage.scale.y + my)
+            } else if (debth == 'Satellite' && planets[i].name == State.location[2]) {
+                let elem = planets[i].elem
+                app.stage.position.set(-(x + elem.parent.x) * app.stage.scale.x + mx, -(y + elem.parent.y) * app.stage.scale.y + my)
             }
         }
     }
 }
 
 function calcPlanetPos(year, orbitalRadius) {
-    let theta = Date.now() / year / Math.PI / 1000
-    let x = Math.cos(theta) * mx * orbitalRadius
-    let y = Math.sin(theta) * mx * orbitalRadius
+    let theta = Date.now() / year / Config.orbitTime / 1000
+    let x = Math.cos(theta) * orbitalRadius
+    let y = Math.sin(theta) * orbitalRadius
     return [x, y]
 }
 
 function calcSatilitePos(year, orbitalRadius, parentYear, parentOrbitalRadius, parentSize) {
     let [x, y] = calcPlanetPos(parentYear, parentOrbitalRadius)
 
-    let theta = Date.now() / year / Math.PI / 1000
+    let theta = Date.now() / year / Config.orbitTime / 1000
     let r = orbitalRadius * parentSize * Config.moonOrbitMul
     x += Math.cos(theta) * r
     y += Math.sin(theta) * r

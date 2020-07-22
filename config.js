@@ -3,7 +3,13 @@ let Config = {
         continental: 0x18393e,
         barren: 0x454545,
     },
-    moonOrbitMul: 2
+    moonOrbitMul: 2,
+    orbitTime: Math.PI * 12,
+    scales: {
+        System: 1,
+        Planet: 3,
+        Satellite: 5,
+    }
 }
 
 function accent(color) {
